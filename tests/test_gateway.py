@@ -145,6 +145,8 @@ class LogicTests(unittest.TestCase):
 class HTTPTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
+        # .env пользователя (GATEWAY_CORS_ORIGINS=*) не должен менять поведение тестов
+        cls._saved_cors = os.environ.pop("GATEWAY_CORS_ORIGINS", None)
         cls.server = ThreadingHTTPServer(("127.0.0.1", 0), gateway.GatewayHandler)
         cls.server.daemon_threads = True
         cls.thread = threading.Thread(target=cls.server.serve_forever, daemon=True)
@@ -156,6 +158,8 @@ class HTTPTests(unittest.TestCase):
         cls.server.shutdown()
         cls.server.server_close()
         cls.thread.join(timeout=3)
+        if cls._saved_cors is not None:
+            os.environ["GATEWAY_CORS_ORIGINS"] = cls._saved_cors
 
     def request(self, method, path, body=None, headers=None):
         conn = http.client.HTTPConnection("127.0.0.1", self.port, timeout=3)

@@ -847,6 +847,9 @@ class GatewayHandler(BaseHTTPRequestHandler):
         if not self._auth():
             return
         path = self.path.split("?", 1)[0].rstrip("/")
+        # Janitor и часть клиентов шлют POST прямо на базовый URL (/v1, /)
+        if path in ("/v1", "/v1beta", "", "/"):
+            path = "/v1/chat/completions"
         if path not in ("/v1/chat/completions", "/v1beta/openai/chat/completions", "/chat/completions"):
             self._reply(404, {"error": {"message": f"not found: {self.path}", "type": "invalid_request_error", "code": 404}})
             return
