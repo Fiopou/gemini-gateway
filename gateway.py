@@ -526,8 +526,21 @@ def _iter_sse(resp):
             pass
 
 
+def strip_trailing_assistant(messages):
+    """Gemini отклоняет диалоги, заканчивающиеся ходом модели ("Requests ending with
+    a model turn are not supported"). Janitor шлёт такой хвост при regenerate —
+    отрезаем его перед upstream."""
+    out = list(messages)
+    while out and isinstance(out[-1], dict) and out[-1].get("role") in ("assistant", "function", "tool"):
+        out.pop()
+    return out
+
+
 def chat(model, messages, stream=False, **opts):
     resolved = resolve_model(model)
+    messages = strip_trailing_assistant(messages)
+    if not messages:
+        raise GatewayError(400, "conversation is empty after removing trailing assistant turn")
     if resolved == "cascade":
         resp = _chat_cascade(messages, stream=stream, **opts)
     else:

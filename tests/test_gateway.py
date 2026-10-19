@@ -25,6 +25,31 @@ class FakeResponse:
         self.closed = True
 
 
+class StripTrailingAssistantTests(unittest.TestCase):
+    def test_strips_trailing_assistant_turns(self):
+        messages = [
+            {"role": "system", "content": "sys"},
+            {"role": "user", "content": "hi"},
+            {"role": "assistant", "content": "hello"},
+            {"role": "assistant", "content": ""},
+        ]
+        self.assertEqual(
+            gateway.strip_trailing_assistant(messages),
+            [
+                {"role": "system", "content": "sys"},
+                {"role": "user", "content": "hi"},
+            ],
+        )
+
+    def test_keeps_user_ending(self):
+        messages = [
+            {"role": "user", "content": "hi"},
+            {"role": "assistant", "content": "yo"},
+            {"role": "user", "content": "again"},
+        ]
+        self.assertEqual(gateway.strip_trailing_assistant(messages), messages)
+
+
 class SSETests(unittest.TestCase):
     def test_crlf_events_are_parsed_and_response_closed(self):
         response = FakeResponse([
