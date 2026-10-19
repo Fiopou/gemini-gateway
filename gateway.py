@@ -362,10 +362,14 @@ class GatewayError(Exception):
 
 # --- Параметры, которые Google не принимает ---
 DROP_PARAMS = {
-    "reasoning_effort", "reasoning", "logit_bias", "logprobs",
+    "logit_bias", "logprobs",
     "top_logprobs", "presence_penalty", "frequency_penalty", "seed",
-    "n", "best_of", "logit_bias", "parallel_tool_calls",
+    "n", "best_of", "parallel_tool_calls",
 }
+# reasoning_effort НЕ в DROP: Google принимает его и включает thinking-бюджет.
+
+def _log(msg):
+    print(f"[{time.strftime('%H:%M:%S')}] {msg}", flush=True)
 
 def _clean_payload(payload):
     out = {}
@@ -541,9 +545,16 @@ def chat(model, messages, stream=False, **opts):
     messages = strip_trailing_assistant(messages)
     if not messages:
         raise GatewayError(400, "conversation is empty after removing trailing assistant turn")
+    # Thinking: Google принимает reasoning_effort (low/medium/high). Дефолт из
+    # GATEWAY_REASONING_EFFORT; пусто = не шлём (модель сама решает).
+    if not opts.get("reasoning_effort"):
+        env_effort = os.environ.get("GATEWAY_REASONING_EFFORT", "").strip()
+        if env_effort:
+            opts["reasoning_effort"] = env_effort
     if resolved == "cascade":
         resp = _chat_cascade(messages, stream=stream, **opts)
     else:
+        _log(f"model={resolved} stream={bool(stream)} msgs={len(messages)}")
         resp = _request(resolved, messages, stream=stream, **opts)
     if stream:
         return _iter_sse(resp)
@@ -575,12 +586,15 @@ def _chat_cascade(messages, stream=False, **opts):
         any_free = any(not _quota_busy(m, _key_idx(k)) for k in keys)
         if not any_free:
             errors.append(f"{m}: все ключи в локальном cooldown")
+            _log(f"cascade skip {m}: все ключи в cooldown")
             continue
         try:
+            _log(f"cascade try {m} stream={bool(stream)} msgs={len(messages)}")
             return _request(m, messages, stream=stream, **opts)
         except GatewayError as e:
             last_error = e
             errors.append(f"{m}: {e.code} {e.body[:100]}")
+            _log(f"cascade fail {m}: {e.code} {e.body[:120]}")
             if e.is_auth_error() or e.is_rate_limited() or e.is_overloaded() or e.is_network():
                 continue
             raise

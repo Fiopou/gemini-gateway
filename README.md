@@ -86,6 +86,7 @@ python gateway.py chat "Привет" -m gemini
 | `GATEWAY_COMPACT_KEEP_MESSAGES` | Сколько последних сообщений сохранять без резюме | `4` |
 | `GATEWAY_COMPACT_MODEL` | Модель для резюмирования старой истории | `gemini-3.5-flash-lite` |
 | `GATEWAY_PROBE` | Выполнить тестовый upstream-запрос при старте, `1`/`0` | `0` |
+| `GATEWAY_REASONING_EFFORT` | Дефолтный `reasoning_effort` для Google (`low`/`medium`/`high`); пусто — не шлём | Пусто |
 | `GATEWAY_CORS_ORIGINS` | Явный список origin через запятую; `*` отключает фильтрацию origin | Loopback-origin (`localhost`, `127.0.0.1`, `::1`) |
 
 Оценка токенов — консервативная локальная эвристика, а не официальный токенизатор Google. Если после резюмирования контекст всё ещё превышает `GATEWAY_MAX_CONTEXT`, шлюз вернёт `413`, а не отправит запрос, превышающий заданный лимит. Слишком большую историю (более `GATEWAY_COMPACT_MAX_CHUNKS` фрагментов) он не обрезает молча.
